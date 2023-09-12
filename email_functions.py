@@ -59,6 +59,9 @@ def connect_to_email(email_user, email_pass, inbox):
         mailbox.select(inbox)
         print("Logged in successfully")
         print(f"Current folder: {inbox}")
+        
+    except imaplib.IMAP4.error as imap_error:
+        print(imap_error)
     except Exception as e:
         print("An error occurred logging into email server:", e)
 
