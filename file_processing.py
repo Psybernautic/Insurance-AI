@@ -107,3 +107,7 @@ def delete_file(file_path):
         print(f"File '{file_path}' not found.")
     except Exception as e:
         print(f"An error occurred while deleting the file: {e}")
+
+def get_files_to_process(scans_directory, supported_extensions):
+    files_to_process = [f for f in os.listdir(scans_directory) if os.path.splitext(f)[1].lower() in supported_extensions]
+    return files_to_process

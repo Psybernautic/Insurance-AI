@@ -79,22 +79,22 @@ else:
 # ---------------------------------------------------------------------
 
 # Retrieve the IDs of unread emails from the specified mailbox.
-#unread_email_list = get_unread_emails(mailbox)
+unread_email_list = get_unread_emails(mailbox)
 
 # If there are no new emails, wait 5 seconds for emails to populate
-#if len(unread_email_list) == 0:
-#    print("No new unread emails")
-#   time.sleep(5)
+if len(unread_email_list) == 0:
+    print("No new unread emails")
+    time.sleep(5)
 
 # Search for the oldest unread email
-#oldest_email_id = unread_email_list[0].split()[0]
-#oldest_email_id_value = str(oldest_email_id)
-#print("Oldest unread email id: " + oldest_email_id_value)
+oldest_email_id = unread_email_list[0].split()[0]
+oldest_email_id_value = str(oldest_email_id)
+print("Oldest unread email id: " + oldest_email_id_value)
 
 # Fetch oldest unread email by id
 
-#status, data = mailbox.fetch(oldest_email_id, "(RFC822)")
-#email_data = email.message_from_bytes(data[0][1])
+status, data = mailbox.fetch(oldest_email_id, "(RFC822)")
+email_data = email.message_from_bytes(data[0][1])
 
 
 
@@ -121,21 +121,26 @@ else:
 # If greater than 15 pages, Split the PDF
 # ---------------------------------------------------------------------
 
-files_to_process = [f for f in os.listdir(scans_directory) if os.path.splitext(f)[1].lower() in supported_extensions]
+files_to_process = get_files_to_process(scans_directory, supported_extensions)
 
 for file in files_to_process:
-    
-    file_path = os.path.join(scans_directory, file)
-    file_name = get_file_name_without_extension(file)
-    mime_type = get_mime_type(file)
+    try:
+        file_path = os.path.join(scans_directory, file)
+        file_name = get_file_name_without_extension(file)
+        mime_type = get_mime_type(file)
 
-    pdf = PyPDF2.PdfReader(file_path)
-    total_pages = len(pdf.pages)
+        pdf = PyPDF2.PdfReader(file_path)
+        total_pages = len(pdf.pages)
 
-    if total_pages > maximum_pages:
-        split_pdf_into_groups(file_name,pdf, scans_directory)
-        delete_file(file_path)
-        files_to_process = [f for f in os.listdir(scans_directory) if os.path.splitext(f)[1].lower() in supported_extensions]
+        if total_pages > maximum_pages:
+            split_pdf_into_groups(file_name,pdf, scans_directory)
+            delete_file(file_path)
+            files_to_process = get_files_to_process(scans_directory, supported_extensions)
+
+    except Exception as e:
+        print(f"Error processing file: {file}. ", e)
+
+
 
 for file in files_to_process:
     # Construct the full file path by joining the file name with the scans_directory
