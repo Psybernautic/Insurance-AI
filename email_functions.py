@@ -59,7 +59,7 @@ def connect_to_email(email_user, email_pass, inbox):
         mailbox.select(inbox)
         print("Logged in successfully")
         print(f"Current folder: {inbox}")
-        
+
     except imaplib.IMAP4.error as imap_error:
         print(imap_error)
     except Exception as e:
@@ -103,6 +103,10 @@ def get_unread_emails(mailbox):
         return email_ids[0].split() if status == 'OK' else []
     except Exception as e:
         print(f"Error trying to get unread emails: ", e)
+
+def get_sender(email_message):
+    sender = email_message["From"]
+    return sender
 
 
 def extract_first_three_receivers_string(email_message):
@@ -174,6 +178,29 @@ def create_PDF_directory(current_directory):
     if not os.path.exists(pdf_directory):
         os.mkdir(pdf_directory)
     return pdf_directory
+
+def create_directories(current_directory,pdf_name):
+    """
+    Creates a directory with the name of the pdf processed within the given 'current_directory' if it doesn't exist,
+    and returns the path to the created directory.
+
+    Args:
+        current_directory (str): The path to the current directory where the 'PDFs' directory will be stored.
+
+    Returns:
+        str: The path to the created 'PDFs' directory.
+    """
+    pdf_directory = os.path.join(current_directory, pdf_name)
+    if not os.path.exists(pdf_directory):
+        os.mkdir(pdf_directory)
+
+    BOL_directory = os.path.join(pdf_directory, "BOL")
+    os.mkdir(BOL_directory)
+
+    invoice_directory = os.path.join(pdf_directory, "Invoice")
+    os.mkdir(invoice_directory)
+
+    return pdf_directory, BOL_directory, invoice_directory
 
 
 

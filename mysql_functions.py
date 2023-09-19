@@ -62,7 +62,7 @@ def database_login():
         print(f"An error occurred: {str(e)}")
 
 
-def insert_to_database(sender_address, receiver_address, body, cursor, connection):
+def insert_email_to_database(sender_address, receiver_address, body, cursor, connection):
     """
     Inserts email information into a database.
 
@@ -91,3 +91,4 @@ def insert_to_database(sender_address, receiver_address, body, cursor, connectio
 
     except Exception as e:
         print(f"An error occurred while inserting data: {str(e)}")
+

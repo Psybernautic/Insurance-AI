@@ -26,10 +26,16 @@ from email_functions import *
 from mysql_functions import *
 from file_processing import *
 from document_ai import *
+import re
 
 # -----------------------------------------------------------------------------
 # Constants
 # -----------------------------------------------------------------------------
+
+bill_of_lading_search_terms = ["Bill of Lading","b/l","Manifest From","Consignee name and address",
+                               "Description Of Goods","Container No.", "Point of origin", "Destination And Route",
+                               "Transportation bill of lading", "Shipper Signature"]
+invoice_search_terms = ["Invoice Number","Invoice Date","Payment Terms","Due Date","Invoice","Freight Subtotal","Total Due","Invoice #"]
 
 maximum_pages = 15
 # ---------------------------------------------------------------------
@@ -42,14 +48,15 @@ current_directory = os.getcwd()
 # Create PDF directory if it does not already exist
 pdf_directory = create_PDF_directory(current_directory)
 
-# Log in to MySQL Database
+# # Log in to MySQL Database
 connection = database_login()
 
-# Create cursor for MySQL
+# # Create cursor for MySQL
 cursor = connection.cursor()
 
-# Define the directory path where your files are located
+# Directory paths where files are stored
 scans_directory = r'PDFs'  
+testing_directory = r'Testing'
 
 
 # ---------------------------------------------------------------------
@@ -57,60 +64,61 @@ scans_directory = r'PDFs'
 # ---------------------------------------------------------------------
 
 # Login to mail box
-connect_to_email(email_user, email_pass, inbox)
+# connect_to_email(email_user, email_pass, inbox)
 
-# Define parent folder
-parentfolder_name = "Inbox"
+# # Define parent folder
+# parentfolder_name = "Inbox"
 
-# Define the name of the subfolder within "inbox" to select
-subfolder_name = "HEAD_OFFICE"  # Replace with the name of the subfolder you want to select
+# # Define the name of the subfolder within "inbox" to select
+# subfolder_name = "HEAD_OFFICE"  # Replace with the name of the subfolder you want to select
 
-# Select the subfolder within "inbox"
-success = select_subfolder_in_inbox(mailbox, subfolder_name)
+# # Select the subfolder within "inbox"
+# #success = select_subfolder_in_inbox(mailbox, subfolder_name)
 
-if success:
-    print(f"Successfully selected subfolder: {subfolder_name}")
-else:
-    print(f"Failed to select subfolder: {subfolder_name}")
-
-
-# ---------------------------------------------------------------------
-# Email Retrieval and Processing
-# ---------------------------------------------------------------------
-
-# Retrieve the IDs of unread emails from the specified mailbox.
-unread_email_list = get_unread_emails(mailbox)
-
-# If there are no new emails, wait 5 seconds for emails to populate
-if len(unread_email_list) == 0:
-    print("No new unread emails")
-    time.sleep(5)
-
-# Search for the oldest unread email
-oldest_email_id = unread_email_list[0].split()[0]
-oldest_email_id_value = str(oldest_email_id)
-print("Oldest unread email id: " + oldest_email_id_value)
-
-# Fetch oldest unread email by id
-
-status, data = mailbox.fetch(oldest_email_id, "(RFC822)")
-email_data = email.message_from_bytes(data[0][1])
+# #if success:
+# #    print(f"Successfully selected subfolder: {subfolder_name}")
+# #else:
+# #    print(f"Failed to select subfolder: {subfolder_name}")
 
 
+# # ---------------------------------------------------------------------
+# # Email Retrieval and Processing
+# # ---------------------------------------------------------------------
 
-# ---------------------------------------------------------------------
-# Email Data Extraction and Database Insertion
-# ---------------------------------------------------------------------
+    
+# # Retrieve the IDs of unread emails from the specified mailbox.
+# unread_email_list = get_unread_emails(mailbox)
 
-# Store separate parts of the email
-#sender = email_data["From"]
-#receiver = extract_first_three_receivers_string(email_data)
-#body = get_body(email_data)
+# # If there are no new emails, wait 5 seconds for emails to populate
+# if len(unread_email_list) == 0:
+#     print("No new unread emails")
+#     time.sleep(180)
 
-# Download attachment from the email if there are any
+# # Search for the oldest unread email
+# oldest_email_id = unread_email_list[0].split()[0]
+# oldest_email_id_value = str(oldest_email_id)
 
-#if not get_attachments(email_data):
-#    print("No attachment downloaded")
+# # Fetch oldest unread email by id
+
+# status, data = mailbox.fetch(oldest_email_id, "(RFC822)")
+# try:
+#     email_data = email.message_from_bytes(data[0][1])    
+# except email.errors.MessageError as e:
+#     print("Error trying to fetch email")
+
+# # ---------------------------------------------------------------------
+# # Email Data Extraction and Database Insertion
+# # ---------------------------------------------------------------------
+
+# # Store separate parts of the email
+# sender = get_sender(email_data)
+# receiver = extract_first_three_receivers_string(email_data)
+# body = get_body(email_data)
+
+# # Download attachment from the email if there are any
+
+# if not get_attachments(email_data):
+#     print("No attachment downloaded")
 
 
 # Insert email into database
@@ -118,72 +126,135 @@ email_data = email.message_from_bytes(data[0][1])
 
 
 # ---------------------------------------------------------------------
-# If greater than 15 pages, Split the PDF
+# File Processing With Document AI OCR Processor
 # ---------------------------------------------------------------------
 
-files_to_process = get_files_to_process(scans_directory, supported_extensions)
+files_to_process = get_files_to_process(pdf_directory, supported_extensions)
 
-for file in files_to_process:
-    try:
-        file_path = os.path.join(scans_directory, file)
-        file_name = get_file_name_without_extension(file)
-        mime_type = get_mime_type(file)
+if len(files_to_process) > 0:
+    for file in files_to_process:
+        try:
+            # Combine the 'pdf_directory' and 'file' to create the full file path.
+            file_path = os.path.join(pdf_directory, file)
 
-        pdf = PyPDF2.PdfReader(file_path)
-        total_pages = len(pdf.pages)
+            # Extract the file name without the extension.
+            file_name = get_file_name_without_extension(file)
 
-        if total_pages > maximum_pages:
-            split_pdf_into_groups(file_name,pdf, scans_directory)
-            delete_file(file_path)
-            files_to_process = get_files_to_process(scans_directory, supported_extensions)
+            # Create and store directory paths for the files to be sorted into
+            new_directory_path, BOL_directory_path, invoice_directory_path = create_directories(current_directory, file_name)
 
-    except Exception as e:
-        print(f"Error processing file: {file}. ", e)
+            # Open the PDF file using PyPDF2.
+            pdf = PyPDF2.PdfReader(file_path)
+
+            # Get the total number of pages in the PDF.
+            total_pages = len(pdf.pages)
+
+            # Check if there is at least one page in the PDF.
+            if total_pages >= 1:
+                # Split the PDF into groups (e.g., individual pages) starting from page 1.
+                split_pdf_into_groups(file_name,pdf, new_directory_path, 1)
+
+                # Delete the original PDF file.
+                delete_file(file_path)
+
+                # Get a list of files to process in the 'new_directory_path' with supported extensions.
+                split_files_to_process = get_files_to_process(new_directory_path, supported_extensions)
+
+                for file in split_files_to_process:
+
+                    # Construct the full file path by joining the file name with the scans_directory
+                    file_path = os.path.join(new_directory_path, file)
+
+                    # Get the mime type of the file
+                    mime_type = get_mime_type(file)
+
+                    try:
+                        # API call to Document AI for processing the document
+                        response = quickstart(project_id, location, processor_id, file_path, mime_type)
+
+                        # Extract the content from the response
+                        text = response.document.text
+                        document = response.document
+                        pages = document.pages
+                        page_num = 1
+
+                        bill_of_lading_count_total = 0
+                        invoice_count_total = 0
+
+                        print(f"Scanning {file}...")
+                        block_list = []
+
+                        # ---------------------------------------------------------------------
+                        # Extract text blocks from each document and store in a list
+                        # ---------------------------------------------------------------------
+
+                        try:
+
+                            # Iterate over the text blocks in the page
+                            for block in pages[0].blocks:
+                                # Extract the text from the layout of the block and append it to the block_list
+                                block_text = layout_to_text(block.layout, text)
+                                block_list.append(repr(block_text))
+
+                                bill_of_lading_count = 0
+                                invoice_count = 0
+
+                            # POD / BL              
+                            for item in block_list:
+                                item_lower = item.lower()
+                                for term in bill_of_lading_search_terms:
+                                    if term.lower() in item_lower:
+                                        bill_of_lading_count += 1
+
+                            # Invoice
+                            for item in block_list:
+                                item_lower = item.lower()
+                                for term in invoice_search_terms:
+                                    if term.lower() in item_lower:
+                                        invoice_count += 1
+
+                            bill_of_lading_count_total += bill_of_lading_count
+                            invoice_count_total += invoice_count
+
+                        except Exception as e:
+                            print("error ")       
+                            
+                        # Determine where the file should be placed
+                        if bill_of_lading_count_total >=5:
+                            print("moving file to bill of lading directory")
+                            move_file(file_path, BOL_directory_path)
+
+                        elif invoice_count_total >= 5:
+                            print("moving file to invoice directory")
+                            move_file(file_path, invoice_directory_path)
+
+                        else:
+                            print("Unable to determine document type..")
+                            print("Sending file for human intervention")
 
 
+                    except Exception as e:
+                        print("Error trying to parse document using OCR: ", e)
 
-for file in files_to_process:
-    # Construct the full file path by joining the file name with the scans_directory
-    file_path = os.path.join(scans_directory, file)
-    try:
-        # Create an empty list to store text blocks
-        block_list = []
+            else:
+                print("No pages found to process")
 
-        # Process the PDF file using the quickstart function
-        response = quickstart(project_id, location, processor_id, file_path, mime_type)
+        except Exception as e:
+            print(f"Error processing file: {file}. ", e)
 
-        # Extract the text content from the response
-        text = response.document.text
-        document = response.document
-        pages = document.pages
 
-        # Iterate over the pages in the document
-        for page in pages:
-            # Iterate over the text blocks in the page
-            for block in page.blocks:
-                # Extract the text from the layout of the block and append it to the block_list
-                block_text = layout_to_text(block.layout, text)
-                block_list.append(repr(block_text))
-            # 
-
-        # Print the list of text blocks for the current file
-        print(block_list)
-
-        # Pause execution for 3 seconds (optional, for demonstration purposes)
-        time.sleep(3)
-
-    except Exception as e:
-        print(f"An error occurred: {str(e)}")
-        # In case of an error, send the file to an email for processing
-        print(f"Sending file to {email_user} for human intervention")
+else:
+    for num_dots in range(4):
+        message = "Waiting for email to come in" + "." * num_dots
+        print(message, end='\r')  # Use '\r' to overwrite the same line
+        time.sleep(1)  # Wait for 1 second
+        print(" " * len(message), end='\r')  # Clear the line
+        
         
 
 
 
 
-# ---------------------------------------------------------------------
-# Extract text blocks from each document
-# ---------------------------------------------------------------------
 
 
 # ---------------------------------------------------------------------
@@ -195,4 +266,4 @@ for file in files_to_process:
 # ---------------------------------------------------------------------
 
 # Logout from mail box
-mailbox.logout()
+#mailbox.logout()
