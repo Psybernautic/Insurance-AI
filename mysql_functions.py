@@ -92,3 +92,22 @@ def insert_email_to_database(sender_address, receiver_address, body, cursor, con
     except Exception as e:
         print(f"An error occurred while inserting data: {str(e)}")
 
+def insert_to_database(document_id, document_name, text_blocks, cursor, connection, table_name):
+    try:
+        # Concatenate all text blocks into a single string with a separator (e.g., newline)
+        combined_text = '\n'.join(text_blocks)
+
+        # Define the INSERT query
+        insert_query = f"INSERT INTO {table_name} (document_id, document_name, text_block) VALUES (%s, %s, %s)"
+        data = (document_id, document_name, combined_text)
+
+        # Execute the INSERT query
+        cursor.execute(insert_query, data)
+
+        # Commit changes (if any)
+        connection.commit()
+
+        print("Entry added to database")
+
+    except Exception as e:
+        print(f"An error occurred while inserting data: {str(e)}")

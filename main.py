@@ -27,6 +27,7 @@ from mysql_functions import *
 from file_processing import *
 from document_ai import *
 import re
+import uuid
 
 # -----------------------------------------------------------------------------
 # Constants
@@ -37,7 +38,7 @@ bill_of_lading_search_terms = ["Bill of Lading","b/l","Manifest From","Consignee
                                "Transportation bill of lading", "Shipper Signature"]
 invoice_search_terms = ["Invoice Number","Invoice Date","Payment Terms","Due Date","Invoice","Freight Subtotal","Total Due","Invoice #"]
 
-maximum_pages = 15
+maximum_pages = 1
 # ---------------------------------------------------------------------
 # Directory Setup and Database Connection
 # ---------------------------------------------------------------------
@@ -64,65 +65,66 @@ testing_directory = r'Testing'
 # ---------------------------------------------------------------------
 
 # Login to mail box
-# connect_to_email(email_user, email_pass, inbox)
+connect_to_email(email_user, email_pass, inbox)
 
-# # Define parent folder
-# parentfolder_name = "Inbox"
+# Define parent folder
+#parentfolder_name = "Inbox"
 
-# # Define the name of the subfolder within "inbox" to select
-# subfolder_name = "HEAD_OFFICE"  # Replace with the name of the subfolder you want to select
+# Define the name of the subfolder within "inbox" to select
+#subfolder_name = "HEAD_OFFICE"  # Replace with the name of the subfolder you want to select
 
-# # Select the subfolder within "inbox"
-# #success = select_subfolder_in_inbox(mailbox, subfolder_name)
+# Select the subfolder within "inbox"
+#success = select_subfolder_in_inbox(mailbox, subfolder_name)
 
-# #if success:
-# #    print(f"Successfully selected subfolder: {subfolder_name}")
-# #else:
-# #    print(f"Failed to select subfolder: {subfolder_name}")
+#if success:
+#    print(f"Successfully selected subfolder: {subfolder_name}")
+#else:
+#    print(f"Failed to select subfolder: {subfolder_name}")
 
 
-# # ---------------------------------------------------------------------
-# # Email Retrieval and Processing
-# # ---------------------------------------------------------------------
+# ---------------------------------------------------------------------
+# Email Retrieval and Processing
+# ---------------------------------------------------------------------
 
     
-# # Retrieve the IDs of unread emails from the specified mailbox.
-# unread_email_list = get_unread_emails(mailbox)
+# Retrieve the IDs of unread emails from the specified mailbox.
+unread_email_list = get_unread_emails(mailbox)
 
-# # If there are no new emails, wait 5 seconds for emails to populate
-# if len(unread_email_list) == 0:
-#     print("No new unread emails")
-#     time.sleep(180)
+# If there are no new emails, wait 5 seconds for emails to populate
+if len(unread_email_list) == 0:
+    print("No new unread emails")
+    #time.sleep(180)
 
-# # Search for the oldest unread email
-# oldest_email_id = unread_email_list[0].split()[0]
-# oldest_email_id_value = str(oldest_email_id)
+else:
+    # Search for the oldest unread email
+    oldest_email_id = unread_email_list[0].split()[0]
+    oldest_email_id_value = str(oldest_email_id)
 
-# # Fetch oldest unread email by id
+    # Fetch oldest unread email by id
 
-# status, data = mailbox.fetch(oldest_email_id, "(RFC822)")
-# try:
-#     email_data = email.message_from_bytes(data[0][1])    
-# except email.errors.MessageError as e:
-#     print("Error trying to fetch email")
+    status, data = mailbox.fetch(oldest_email_id, "(RFC822)")
+    try:
+        email_data = email.message_from_bytes(data[0][1])    
+    except email.errors.MessageError as e:
+        print("Error trying to fetch email")
 
-# # ---------------------------------------------------------------------
-# # Email Data Extraction and Database Insertion
-# # ---------------------------------------------------------------------
+    # ---------------------------------------------------------------------
+    # Email Data Extraction and Database Insertion
+    # ---------------------------------------------------------------------
 
-# # Store separate parts of the email
-# sender = get_sender(email_data)
-# receiver = extract_first_three_receivers_string(email_data)
-# body = get_body(email_data)
+    # Store separate parts of the email
+    sender = get_sender(email_data)
+    receiver = extract_first_three_receivers_string(email_data)
+    body = get_body(email_data)
 
-# # Download attachment from the email if there are any
+    # Download attachment from the email if there are any
 
-# if not get_attachments(email_data):
-#     print("No attachment downloaded")
+    if not get_attachments(email_data):
+        print("No attachment downloaded")
 
 
-# Insert email into database
-#insert_to_database(sender, receiver, body, cursor, connection)
+    # Insert email into database
+    insert_email_to_database(sender, receiver, body, cursor, connection)
 
 
 # ---------------------------------------------------------------------
@@ -152,7 +154,7 @@ if len(files_to_process) > 0:
             # Check if there is at least one page in the PDF.
             if total_pages >= 1:
                 # Split the PDF into groups (e.g., individual pages) starting from page 1.
-                split_pdf_into_groups(file_name,pdf, new_directory_path, 1)
+                split_pdf_into_groups(file_name,pdf, new_directory_path, maximum_pages)
 
                 # Delete the original PDF file.
                 delete_file(file_path)
@@ -199,6 +201,13 @@ if len(files_to_process) > 0:
                                 bill_of_lading_count = 0
                                 invoice_count = 0
 
+                            # ---------------------------------------------------------------------
+                            # Enter data into database using mysql
+                            # ---------------------------------------------------------------------
+
+                            # Generate a unique ID for the document
+                            unique_id = str(uuid.uuid4())
+
                             # POD / BL              
                             for item in block_list:
                                 item_lower = item.lower()
@@ -218,15 +227,20 @@ if len(files_to_process) > 0:
 
                         except Exception as e:
                             print("error ")       
-                            
+                        
+                        table_name = ""
                         # Determine where the file should be placed
                         if bill_of_lading_count_total >=5:
                             print("moving file to bill of lading directory")
                             move_file(file_path, BOL_directory_path)
+                            table_name = "bol"
+                            insert_to_database(unique_id,file_name,block_list,cursor,connection, table_name)
 
                         elif invoice_count_total >= 5:
                             print("moving file to invoice directory")
                             move_file(file_path, invoice_directory_path)
+                            table_name = "documents"
+                            insert_to_database(unique_id,file_name,block_list,cursor,connection, table_name)
 
                         else:
                             print("Unable to determine document type..")
@@ -250,10 +264,6 @@ else:
         time.sleep(1)  # Wait for 1 second
         print(" " * len(message), end='\r')  # Clear the line
         
-        
-
-
-
 
 
 
@@ -261,9 +271,10 @@ else:
 # Determine document type
 # ---------------------------------------------------------------------
 
+
 # ---------------------------------------------------------------------
 # Logout from Email
 # ---------------------------------------------------------------------
 
 # Logout from mail box
-#mailbox.logout()
+mailbox.logout()

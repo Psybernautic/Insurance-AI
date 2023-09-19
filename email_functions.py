@@ -34,12 +34,15 @@ from email.header import decode_header
 # Constants
 # -----------------------------------------------------------------------------
 
-email_user = "pods@rometransportation.com"
-email_pass = "p01V6$RC$IM5hhMCY09w"
+#email_user = "pods@rometransportation.com"
+#email_pass = "p01V6$RC$IM5hhMCY09w"
 imap_server = "imap.rometransportation.com"
 mailbox = imaplib.IMAP4_SSL(imap_server)
 inbox = "inbox"
 supported_extensions = ['.pdf', '.jpg', '.png', '.tiff']
+
+email_user = "document-ai@loadaccess.com"
+email_pass = "crbQ#8xGTM"
 
 def connect_to_email(email_user, email_pass, inbox):
     """
