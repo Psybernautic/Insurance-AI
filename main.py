@@ -30,13 +30,18 @@ import re
 import uuid
 
 # -----------------------------------------------------------------------------
-# Constants
+# Search Terms
 # -----------------------------------------------------------------------------
 
 bill_of_lading_search_terms = ["Bill of Lading","b/l","Manifest From","Consignee name and address",
                                "Description Of Goods","Container No.", "Point of origin", "Destination And Route",
-                               "Transportation bill of lading", "Shipper Signature"]
-invoice_search_terms = ["Invoice Number","Invoice Date","Payment Terms","Due Date","Invoice","Freight Subtotal","Total Due","Invoice #"]
+                               "Transportation bill of lading", "Shipper Signature","Cargo Description"]
+invoice_search_terms = ["Invoice Number","Invoice Date","Payment Terms","Due Date","Invoice","Freight Subtotal","Total Due","Invoice #","Bill To",
+                        "Bank Information","Routing Number"]
+certificate_of_insurance_terms = ["Insured", "Certificate Of Liability Insurance","Policy Number",
+                                  "Type Of Insurance", "Certificate Holder","Insurance Company",
+                                  "Liability", "Amount Of Insurance", "Insurance", "Certificate Of Insurance",
+                                  "Insurance Brokers"]
 
 maximum_pages = 1
 # ---------------------------------------------------------------------
@@ -141,9 +146,10 @@ if len(files_to_process) > 0:
 
             # Extract the file name without the extension.
             file_name = get_file_name_without_extension(file)
+            file_name = replace_spaces_with_underscore(file_name)
 
             # Create and store directory paths for the files to be sorted into
-            new_directory_path, BOL_directory_path, invoice_directory_path = create_directories(current_directory, file_name)
+            new_directory_path, BOL_directory_path, invoice_directory_path, insurance_directory_path = create_directories(current_directory, file_name)
 
             # Open the PDF file using PyPDF2.
             pdf = PyPDF2.PdfReader(file_path)
@@ -198,14 +204,15 @@ if len(files_to_process) > 0:
                                 block_text = layout_to_text(block.layout, text)
                                 block_list.append(repr(block_text))
 
-                                bill_of_lading_count = 0
-                                invoice_count = 0
-
+                            bill_of_lading_count = 0
+                            invoice_count = 0
+                            coi_count = 0
                             # ---------------------------------------------------------------------
                             # Enter data into database using mysql
                             # ---------------------------------------------------------------------
 
                             # Generate a unique ID for the document
+
                             unique_id = str(uuid.uuid4())
 
                             # POD / BL              
@@ -222,29 +229,39 @@ if len(files_to_process) > 0:
                                     if term.lower() in item_lower:
                                         invoice_count += 1
 
-                            bill_of_lading_count_total += bill_of_lading_count
-                            invoice_count_total += invoice_count
+                            # Certificate of insurance
+                            for item in block_list:
+                                item_lower = item.lower()
+                                for term in certificate_of_insurance_terms:
+                                    if term.lower() in item_lower:
+                                        coi_count += 1
 
                         except Exception as e:
                             print("error ")       
                         
-                        table_name = ""
                         # Determine where the file should be placed
-                        if bill_of_lading_count_total >=5:
+                        if bill_of_lading_count >=5:
                             print("moving file to bill of lading directory")
                             move_file(file_path, BOL_directory_path)
                             table_name = "bol"
                             insert_to_database(unique_id,file_name,block_list,cursor,connection, table_name)
 
-                        elif invoice_count_total >= 5:
+                        elif invoice_count >= 5:
                             print("moving file to invoice directory")
                             move_file(file_path, invoice_directory_path)
                             table_name = "documents"
                             insert_to_database(unique_id,file_name,block_list,cursor,connection, table_name)
 
+                        elif coi_count >= 5:
+                            print("Moving file to certificate of insurance directory")
+                            move_file(file_path, insurance_directory_path)
+                            table_name = "certificates_of_insurance"
+                            insert_to_database(unique_id,file_name,block_list,cursor,connection, table_name)
+
                         else:
                             print("Unable to determine document type..")
                             print("Sending file for human intervention")
+                            send_error_email(file_path, file_name)
 
 
                     except Exception as e:
@@ -275,6 +292,7 @@ else:
 # ---------------------------------------------------------------------
 # Logout from Email
 # ---------------------------------------------------------------------
+
 
 # Logout from mail box
 mailbox.logout()

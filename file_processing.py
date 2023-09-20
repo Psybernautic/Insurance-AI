@@ -106,7 +106,7 @@ def delete_file(file_path):
     """
     try:
         os.remove(file_path)
-        print(f"File '{file_path}' has been deleted.")
+        #print(f"File '{file_path}' has been deleted.")
     except FileNotFoundError:
         print(f"File '{file_path}' not found.")
     except Exception as e:
@@ -141,3 +141,16 @@ def move_file(source_file, destination_folder):
         None
     """
     shutil.move(source_file, destination_folder)
+
+def replace_spaces_with_underscore(input_string):
+    """
+    Replaces all space characters in the input string with underscores.
+
+    Parameters:
+    input_string (str): The input string in which spaces should be replaced.
+
+    Returns:
+    str: The input string with spaces replaced by underscores.
+    """
+    return input_string.replace(" ", "_")
+

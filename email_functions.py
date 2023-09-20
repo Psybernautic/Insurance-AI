@@ -28,6 +28,11 @@ import os
 import time
 import email
 import subprocess
+import smtplib
+from email.message import EmailMessage
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from email.mime.application import MIMEApplication
 from email.header import decode_header
 
 # -----------------------------------------------------------------------------
@@ -203,7 +208,10 @@ def create_directories(current_directory,pdf_name):
     invoice_directory = os.path.join(pdf_directory, "Invoice")
     os.mkdir(invoice_directory)
 
-    return pdf_directory, BOL_directory, invoice_directory
+    insurance_directory = os.path.join(pdf_directory, "CertificateOfInsurance")
+    os.mkdir(insurance_directory)
+
+    return pdf_directory, BOL_directory, invoice_directory, insurance_directory
 
 
 
@@ -323,3 +331,44 @@ def get_most_recent_file(directory):
         return most_recent_file_name
     else:
         return None  # No PDF files found
+    
+def send_error_email(file_path, file_name):
+    # Email configuration
+
+    msg = MIMEMultipart()
+    sender_email = email_user
+    recipient_email = "sposada@rometransportation.com"
+    smtp_server = "smtp.rometransportation.com"
+    smtp_port = 587
+    smtp_username = email_user
+    smtp_password = email_pass
+
+    msg['From'] = sender_email
+    msg['To'] = recipient_email
+    msg['Subject'] = "Document Processing Error"
+
+    # Email body
+    body = f"The following file could not be processed: {file_name}"
+    msg.attach(MIMEText(body, 'plain'))
+
+    # Attach the problematic file
+    with open(file_path, 'rb') as file:
+        attachment = MIMEApplication(file.read(), _subtype="pdf")
+        attachment.add_header('Content-Disposition', f'attachment; filename="{file_name}"')
+        msg.attach(attachment)
+
+    # Connect to the SMTP server and send the email
+    try:
+        print("Connecting to SMTP server...")
+        server = smtplib.SMTP(smtp_server, smtp_port, timeout=10)
+        print("Connected to SMTP server.")
+        server.starttls()
+        print("Logged in to SMTP server...")
+        server.login(smtp_username, smtp_password)
+        print("Sending email...")
+        server.sendmail(sender_email, recipient_email, msg.as_string())
+        server.quit()
+        print("Email sent successfully.")
+    except Exception as e:
+        print(f"Error sending email: {str(e)}")
+
