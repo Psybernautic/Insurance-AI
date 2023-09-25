@@ -24,7 +24,7 @@ import os
 # TODO(developer): Uncomment these variables before running the sample.
 project_id = 'loadaccess'
 location = 'us' # Format is 'us' or 'eu'
-processor_id = 'a5097bc2ad9b33c8' #  Create processor before running sample
+processor_id = '12bc9b18db8b8b92' #  Create processor before running sample
 file_path = ''
 mime_type = 'application/pdf' # Refer to https://cloud.google.com/document-ai/docs/file-types for supported file types
 

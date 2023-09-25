@@ -112,9 +112,7 @@ def get_unread_emails(mailbox):
     except Exception as e:
         print(f"Error trying to get unread emails: ", e)
 
-def get_sender(email_message):
-    sender = email_message["From"]
-    return sender
+
 
 
 def extract_first_three_receivers_string(email_message):
@@ -150,6 +148,15 @@ def extract_first_three_receivers_string(email_message):
     
     except Exception as e:
         print("Error trying to parse receiver's email: ", e)
+
+def get_sender(data):
+    sender = data["From"]
+    return sender
+
+def get_dateTime(data):
+    date_str = data["Date"]
+    return date_str
+
 
 def get_body(data):
     """

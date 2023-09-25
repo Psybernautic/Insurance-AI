@@ -36,8 +36,10 @@ import uuid
 bill_of_lading_search_terms = ["Bill of Lading","b/l","Manifest From","Consignee name and address",
                                "Description Of Goods","Container No.", "Point of origin", "Destination And Route",
                                "Transportation bill of lading", "Shipper Signature","Cargo Description"]
+
 invoice_search_terms = ["Invoice Number","Invoice Date","Payment Terms","Due Date","Invoice","Freight Subtotal","Total Due","Invoice #","Bill To",
                         "Bank Information","Routing Number"]
+
 certificate_of_insurance_terms = ["Insured", "Certificate Of Liability Insurance","Policy Number",
                                   "Type Of Insurance", "Certificate Holder","Insurance Company",
                                   "Liability", "Amount Of Insurance", "Insurance", "Certificate Of Insurance",
@@ -59,10 +61,6 @@ connection = database_login()
 
 # # Create cursor for MySQL
 cursor = connection.cursor()
-
-# Directory paths where files are stored
-scans_directory = r'PDFs'  
-testing_directory = r'Testing'
 
 
 # ---------------------------------------------------------------------
@@ -121,6 +119,7 @@ else:
     sender = get_sender(email_data)
     receiver = extract_first_three_receivers_string(email_data)
     body = get_body(email_data)
+    dateTime = get_dateTime(email_data)
 
     # Download attachment from the email if there are any
 
@@ -149,17 +148,17 @@ if len(files_to_process) > 0:
             file_name = replace_spaces_with_underscore(file_name)
 
             # Create and store directory paths for the files to be sorted into
-            split_pdf_directory = create_split_pdf_directory(current_directory, file_name)
+            split_pdf_directory = create_split_pdf_directory(current_directory)
 
             # Open the PDF file using PyPDF2.
             pdf = PyPDF2.PdfReader(file_path)
-
 
             # Get the total number of pages in the PDF.
             total_pages = len(pdf.pages)
 
             # Check if there is at least one page in the PDF.
             if total_pages >= 1:
+                
                 # Split the PDF into groups (e.g., individual pages) starting from page 1.
                 split_pdf_into_groups(file_name,pdf, split_pdf_directory, maximum_pages)
 
@@ -239,21 +238,6 @@ if len(files_to_process) > 0:
 
                         except Exception as e:
                             print("error ")       
-                        
-                        # Determine where the file should be placed
-                        if bill_of_lading_count >=5:
-                            print("moving file to bill of lading directory")
-
-                        elif invoice_count >= 5:
-                            print("moving file to invoice directory")
-
-                        elif coi_count >= 5:
-                            print("Moving file to certificate of insurance directory")
-
-                        else:
-                            print("Unable to determine document type..")
-                            print("Sending file for human intervention")
-                            send_error_email(file_path, file_name)
 
 
                     except Exception as e:
