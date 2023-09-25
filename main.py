@@ -149,10 +149,11 @@ if len(files_to_process) > 0:
             file_name = replace_spaces_with_underscore(file_name)
 
             # Create and store directory paths for the files to be sorted into
-            new_directory_path, BOL_directory_path, invoice_directory_path, insurance_directory_path = create_directories(current_directory, file_name)
+            split_pdf_directory = create_split_pdf_directory(current_directory, file_name)
 
             # Open the PDF file using PyPDF2.
             pdf = PyPDF2.PdfReader(file_path)
+
 
             # Get the total number of pages in the PDF.
             total_pages = len(pdf.pages)
@@ -160,18 +161,18 @@ if len(files_to_process) > 0:
             # Check if there is at least one page in the PDF.
             if total_pages >= 1:
                 # Split the PDF into groups (e.g., individual pages) starting from page 1.
-                split_pdf_into_groups(file_name,pdf, new_directory_path, maximum_pages)
+                split_pdf_into_groups(file_name,pdf, split_pdf_directory, maximum_pages)
 
                 # Delete the original PDF file.
                 delete_file(file_path)
 
                 # Get a list of files to process in the 'new_directory_path' with supported extensions.
-                split_files_to_process = get_files_to_process(new_directory_path, supported_extensions)
+                split_files_to_process = get_files_to_process(split_pdf_directory, supported_extensions)
 
                 for file in split_files_to_process:
 
                     # Construct the full file path by joining the file name with the scans_directory
-                    file_path = os.path.join(new_directory_path, file)
+                    file_path = os.path.join(split_pdf_directory, file)
 
                     # Get the mime type of the file
                     mime_type = get_mime_type(file)
@@ -242,21 +243,12 @@ if len(files_to_process) > 0:
                         # Determine where the file should be placed
                         if bill_of_lading_count >=5:
                             print("moving file to bill of lading directory")
-                            move_file(file_path, BOL_directory_path)
-                            table_name = "bol"
-                            insert_to_database(unique_id,file_name,block_list,cursor,connection, table_name)
 
                         elif invoice_count >= 5:
                             print("moving file to invoice directory")
-                            move_file(file_path, invoice_directory_path)
-                            table_name = "documents"
-                            insert_to_database(unique_id,file_name,block_list,cursor,connection, table_name)
 
                         elif coi_count >= 5:
                             print("Moving file to certificate of insurance directory")
-                            move_file(file_path, insurance_directory_path)
-                            table_name = "certificates_of_insurance"
-                            insert_to_database(unique_id,file_name,block_list,cursor,connection, table_name)
 
                         else:
                             print("Unable to determine document type..")

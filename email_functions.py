@@ -187,7 +187,7 @@ def create_PDF_directory(current_directory):
         os.mkdir(pdf_directory)
     return pdf_directory
 
-def create_directories(current_directory,pdf_name):
+def create_split_pdf_directory(current_directory):
     """
     Creates a directory with the name of the pdf processed within the given 'current_directory' if it doesn't exist,
     and returns the path to the created directory.
@@ -198,20 +198,11 @@ def create_directories(current_directory,pdf_name):
     Returns:
         str: The path to the created 'PDFs' directory.
     """
-    pdf_directory = os.path.join(current_directory, pdf_name)
+    pdf_directory = os.path.join(current_directory, "Split-PDFs")
     if not os.path.exists(pdf_directory):
         os.mkdir(pdf_directory)
 
-    BOL_directory = os.path.join(pdf_directory, "BOL")
-    os.mkdir(BOL_directory)
-
-    invoice_directory = os.path.join(pdf_directory, "Invoice")
-    os.mkdir(invoice_directory)
-
-    insurance_directory = os.path.join(pdf_directory, "CertificateOfInsurance")
-    os.mkdir(insurance_directory)
-
-    return pdf_directory, BOL_directory, invoice_directory, insurance_directory
+    return pdf_directory
 
 
 

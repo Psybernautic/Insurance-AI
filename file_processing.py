@@ -21,6 +21,7 @@
 import PyPDF2
 import os
 import shutil
+import base64
 
 def get_mime_type(file_name):
     """
@@ -154,3 +155,16 @@ def replace_spaces_with_underscore(input_string):
     """
     return input_string.replace(" ", "_")
 
+
+def convert_to_base64(pdf_content):
+    """
+    Convert binary PDF content to base64 encoding.
+
+    Parameters:
+        pdf_content (bytes): Binary content of a PDF file.
+
+    Returns:
+        str: Base64 encoded PDF content.
+    """
+    pdf_base64 = base64.b64encode(pdf_content).decode('utf-8')
+    return pdf_base64
